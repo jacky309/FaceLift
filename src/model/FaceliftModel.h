@@ -946,11 +946,7 @@ public:
  */
 class FaceliftModelLib_EXPORT ModuleBase
 {
-
 public:
-    ModuleBase()
-    {
-    }
 
     static void registerQmlTypes(const char *uri, int majorVersion, int minorVersion);
 };
@@ -958,7 +954,6 @@ public:
 
 class FaceliftModelLib_EXPORT StructureFactoryBase : public QObject
 {
-
     Q_OBJECT
 
 public:
@@ -1080,13 +1075,13 @@ struct QMLModelTypeHandler<Type, typename std::enable_if<std::is_enum<Type>::val
 {
     static QJSValue toJSValue(const Type &v, QQmlEngine *engine)
     {
-        Q_UNUSED(engine)
+        Q_UNUSED(engine);
         return QJSValue(v);
     }
 
     static void fromJSValue(Type &v, const QJSValue &value, QQmlEngine *engine)
     {
-        Q_UNUSED(engine)
+        Q_UNUSED(engine);
         v = static_cast<Type>(value.toInt());
     }
 };
