@@ -1,14 +1,14 @@
 
-facelift_add_library(FaceliftIPCLibLocal
-    SOURCES ipc-common/ipc-common.cpp #local/ipc-local.cpp
-    HEADERS ipc-common/ipc-common.h #local/ipc-local.h
+facelift_add_library(FaceliftIPCLibCommon
+    SOURCES ipc-common/ipc-common.cpp
+    HEADERS ipc-common/ipc-common.h
     LINK_LIBRARIES FaceliftModelLib FaceliftPropertyLib FaceliftCommonLib FaceliftQMLModelLib
 )
 
 facelift_add_library(FaceliftIPCLib
-    SOURCES facelift-ipc.cpp
+    SOURCES facelift-ipc.cpp #dummy.cpp
     HEADERS facelift-ipc.h
-    LINK_LIBRARIES FaceliftIPCLibLocal
+    LINK_LIBRARIES FaceliftModelLib FaceliftPropertyLib FaceliftCommonLib FaceliftQMLModelLib
 )
 
 if(FACELIFT_DBUS_IPC_ENABLED)

@@ -6,95 +6,143 @@ include(GNUInstallDirs)    # for standard installation locations
 include(CMakePackageConfigHelpers)
 
 function(facelift_add_unity_files TARGET_NAME VAR_NAME)
-    set(FILE_INDEX "0")
 
-    # Limit the number of files per unit to ~ 500Kb, to avoid excessive memory usage
-    if(NOT UNITY_BUILD_MAX_FILE_SIZE)
-        set(UNITY_BUILD_MAX_FILE_SIZE 256000)
-    endif()
+    set(NEW_FILE_LIST)
 
-    if(NOT UNITY_BUILD_MAX_FILE_COUNT)
-        set(UNITY_BUILD_MAX_FILE_COUNT 5)
-    endif()
-
-    unset(FILE_LIST)
-    unset(NON_UNITY_FILE_LIST)
     foreach(FILE ${ARGN})
-        get_filename_component(EXT "${FILE}" EXT)
         get_filename_component(ABSOLUTE_FILE "${FILE}" ABSOLUTE)
-        set(EXTENSIONS .h .hpp .cpp)
-        list(FIND EXTENSIONS ${EXT} INDEX)
-        if(${INDEX} EQUAL -1)
-            list(APPEND NON_UNITY_FILE_LIST ${ABSOLUTE_FILE})
-        else()
-            list(APPEND FILE_LIST ${ABSOLUTE_FILE})
-        endif()
+        list(APPEND NEW_FILE_LIST ${ABSOLUTE_FILE})
     endforeach()
 
-    if(FILE_LIST)
-        list(SORT FILE_LIST)
+    if(NEW_FILE_LIST)
+        list(SORT NEW_FILE_LIST)
     endif()
 
-    set(AGGREGATED_FILE_LIST "")
+    set(ORIGINAL_FILE_LIST ${NEW_FILE_LIST})
 
-    list(LENGTH FILE_LIST REMAINING_FILE_COUNT)
+    set(PREVIOUS_FILE_LIST ${_${TARGET_NAME}_FILE_LIST})
 
-    while(${REMAINING_FILE_COUNT} GREATER 0)
+    if("${PREVIOUS_FILE_LIST}" STREQUAL "${NEW_FILE_LIST}")
+        set(AGGREGATED_FILE_LIST ${_${TARGET_NAME}_AGGREGATED_FILE_LIST})
+        message("SAEMMMMMMMMe ${TARGET_NAME}")
 
-        list(LENGTH FILE_LIST LIST_LENGTH)
-
-        if(NOT LIST_LENGTH)
-            break()
-        endif()
-
-        math(EXPR FILE_INDEX "${FILE_INDEX}+1")
-
-        set(REMAINING_FILE_COUNT_PER_UNIT ${UNITY_BUILD_MAX_FILE_COUNT})
-
-        unset(FILES)
-        set(UNITY_FILE_SIZE 0)
-        while((${UNITY_BUILD_MAX_FILE_SIZE} GREATER ${UNITY_FILE_SIZE}) AND (${REMAINING_FILE_COUNT} GREATER 0) AND (${REMAINING_FILE_COUNT_PER_UNIT} GREATER 0))
-            list(GET FILE_LIST 0 FILE)
-            list(REMOVE_AT FILE_LIST 0)
-            list(APPEND FILES ${FILE})
-
-            if(EXISTS ${FILE})
-                file(READ "${FILE}" TMP_FILE_CONTENT)
-            else()
-                unset(TMP_FILE_CONTENT)
-            endif()
-            string(LENGTH "${TMP_FILE_CONTENT}" FILE_SIZE)
-
-            math(EXPR UNITY_FILE_SIZE "${UNITY_FILE_SIZE}+${FILE_SIZE}")
-            math(EXPR REMAINING_FILE_COUNT "${REMAINING_FILE_COUNT}-1")
-            math(EXPR REMAINING_FILE_COUNT_PER_UNIT "${REMAINING_FILE_COUNT_PER_UNIT}-1")
-        endwhile()
-
-        # Generate an aggregator unit content
-        set(FILE_CONTENT "")
-        set(FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_unity_${FILE_INDEX}.cpp)
-        foreach(SRC_FILE ${FILES})
-            set(FILE_CONTENT "${FILE_CONTENT}#include \"${SRC_FILE}\"\n")
+        foreach(AGGREGATED_FILE_NAME ${AGGREGATED_FILE_LIST})
+            set_source_files_properties(${AGGREGATED_FILE_NAME} PROPERTIES OBJECT_DEPENDS "${NEW_FILE_LIST}")
         endforeach()
 
-        # To avoid unnecessary recompiles, check if it is really necessary to rewrite the unity file
-        if(EXISTS ${FILE_NAME})
-            file(READ ${FILE_NAME} OLD_FILE_CONTENT)
-        else()
-            unset(OLD_FILE_CONTENT)
+    else()
+
+        message("GGGGGG${PREVIOUS_FILE_LIST}")
+        message("GGGGGG${NEW_FILE_LIST}")
+
+        unset(LIST)
+        list(APPEND LIST ${NEW_FILE_LIST})
+
+        foreach(FILE ${PREVIOUS_FILE_LIST})
+            list(REMOVE_ITEM LIST "${FILE}")
+        endforeach()
+
+        set(AGGREGATED_FILE_LIST ${_${TARGET_NAME}_AGGREGATED_FILE_LIST} ${LIST})
+
+        if(LIST)
+            message("NEW files: ${LIST}")
         endif()
 
-        if(NOT "${OLD_FILE_CONTENT}" STREQUAL "${FILE_CONTENT}")
-            file(WRITE ${FILE_NAME} ${FILE_CONTENT})
+        set(FILE_INDEX "0")
+
+        # Limit the number of files per unit to ~ 500Kb, to avoid excessive memory usage
+        if(NOT UNITY_BUILD_MAX_FILE_SIZE)
+            set(UNITY_BUILD_MAX_FILE_SIZE 256000)
         endif()
 
-        set_source_files_properties(${FILE_NAME} PROPERTIES OBJECT_DEPENDS "${FILES}")
+        if(NOT UNITY_BUILD_MAX_FILE_COUNT)
+            set(UNITY_BUILD_MAX_FILE_COUNT 5)
+        endif()
 
-        list(APPEND AGGREGATED_FILE_LIST ${FILE_NAME})
+        unset(FILE_LIST)
+        unset(NON_UNITY_FILE_LIST)
+        foreach(ABSOLUTE_FILE ${NEW_FILE_LIST})
+            get_filename_component(EXT "${ABSOLUTE_FILE}" EXT)
+            set(EXTENSIONS .h .hpp .cpp)
+            list(FIND EXTENSIONS ${EXT} INDEX)
+            if(${INDEX} EQUAL -1)
+                list(APPEND NON_UNITY_FILE_LIST ${ABSOLUTE_FILE})
+            else()
+                list(APPEND FILE_LIST ${ABSOLUTE_FILE})
+            endif()
+        endforeach()
 
-    endwhile()
+#        message("DIFFFFFF${TARGET_NAME}")
+#        message("${TARGET_NAME} YYYY ${FILE_LIST}")
 
-    set(${VAR_NAME} ${AGGREGATED_FILE_LIST} ${NON_UNITY_FILE_LIST} PARENT_SCOPE)
+        set(AGGREGATED_FILE_LIST "")
+
+        list(LENGTH FILE_LIST REMAINING_FILE_COUNT)
+
+        while(${REMAINING_FILE_COUNT} GREATER 0)
+
+            list(LENGTH FILE_LIST LIST_LENGTH)
+
+            if(NOT LIST_LENGTH)
+                break()
+            endif()
+
+            math(EXPR FILE_INDEX "${FILE_INDEX}+1")
+
+            set(REMAINING_FILE_COUNT_PER_UNIT ${UNITY_BUILD_MAX_FILE_COUNT})
+
+            unset(FILES)
+            set(UNITY_FILE_SIZE 0)
+            while((${UNITY_BUILD_MAX_FILE_SIZE} GREATER ${UNITY_FILE_SIZE}) AND (${REMAINING_FILE_COUNT} GREATER 0) AND (${REMAINING_FILE_COUNT_PER_UNIT} GREATER 0))
+                list(GET FILE_LIST 0 FILE)
+                list(REMOVE_AT FILE_LIST 0)
+                list(APPEND FILES ${FILE})
+
+                if(EXISTS ${FILE})
+                    file(READ "${FILE}" TMP_FILE_CONTENT)
+                else()
+                    unset(TMP_FILE_CONTENT)
+                endif()
+                string(LENGTH "${TMP_FILE_CONTENT}" FILE_SIZE)
+
+                math(EXPR UNITY_FILE_SIZE "${UNITY_FILE_SIZE}+${FILE_SIZE}")
+                math(EXPR REMAINING_FILE_COUNT "${REMAINING_FILE_COUNT}-1")
+                math(EXPR REMAINING_FILE_COUNT_PER_UNIT "${REMAINING_FILE_COUNT_PER_UNIT}-1")
+            endwhile()
+
+            # Generate an aggregator unit content
+            set(FILE_CONTENT "")
+            set(FILE_NAME ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}_unity_${FILE_INDEX}.cpp)
+            foreach(SRC_FILE ${FILES})
+                set(FILE_CONTENT "${FILE_CONTENT}#include \"${SRC_FILE}\"\n")
+            endforeach()
+
+            # To avoid unnecessary recompiles, check if it is really necessary to rewrite the unity file
+            if(EXISTS ${FILE_NAME})
+                file(READ ${FILE_NAME} OLD_FILE_CONTENT)
+            else()
+                unset(OLD_FILE_CONTENT)
+            endif()
+
+            if(NOT "${OLD_FILE_CONTENT}" STREQUAL "${FILE_CONTENT}")
+                file(WRITE ${FILE_NAME} ${FILE_CONTENT})
+            endif()
+
+            set_source_files_properties(${FILE_NAME} PROPERTIES OBJECT_DEPENDS "${FILES}")
+
+            list(APPEND AGGREGATED_FILE_LIST ${FILE_NAME})
+
+        endwhile()
+
+        set(AGGREGATED_FILE_LIST ${AGGREGATED_FILE_LIST} ${NON_UNITY_FILE_LIST})
+
+    endif()
+
+    message("ffffff ${ORIGINAL_FILE_LIST}")
+    set(_${TARGET_NAME}_FILE_LIST "${ORIGINAL_FILE_LIST}" CACHE STRING "Raw list of source files" FORCE)
+    set(_${TARGET_NAME}_AGGREGATED_FILE_LIST "${AGGREGATED_FILE_LIST}" CACHE STRING "List of aggregated files for target ${TARGET_NAME}" FORCE)
+
+    set(${VAR_NAME} ${AGGREGATED_FILE_LIST} PARENT_SCOPE)
 
 endfunction()
 
@@ -112,7 +160,7 @@ function(facelift_synchronize_folders FOLDER_SOURCE FOLDER_DESTINATION)
             set(OLD_CONTENT "")
         endif()
 
-        if (NOT "${FILE_CONTENT}" STREQUAL "${OLD_CONTENT}")
+        if(NOT "${FILE_CONTENT}" STREQUAL "${OLD_CONTENT}")
             file(WRITE "${FOLDER_DESTINATION}/${FILE_PATH}" "${FILE_CONTENT}")
         endif()
     endforeach()
